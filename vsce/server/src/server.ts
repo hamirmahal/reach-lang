@@ -50,6 +50,8 @@ import {
 	TextDocument, Range, TextEdit
 } from 'vscode-languageserver-textdocument';
 import { KEYWORD_TO_COMPLETION_ITEM_KIND, REACH_KEYWORDS } from './keywordCompletion';
+import * as keywords from './keywordDocumentation';
+console.log('require keywords', keywords);
 
 // Do this import differently so we can add types, to avoid a
 // "No index signature with a parameter of type 'string' was found... ts(7053)"
@@ -72,6 +74,9 @@ import {
 // Create a connection for the server. The connection uses Node's IPC as a transport.
 // Also include all preview / proposed LSP features.
 let connection = createConnection(ProposedFeatures.all);
+
+connection.console.log('require keywords');
+connection.console.log(keywords.toString());
 
 // Create a simple text document manager. The text document manager
 // supports full document sync only
@@ -876,7 +881,11 @@ function getReachKeywordMarkdown(word: string): string {
 	// then input to: https://www.freeformatter.com/javascript-escape.html
 	// If we don't have documentation for `word`,
 	// then just set `buf` to the empty string.
+	console.log('boom!');
 	let buf = KEYWORD_TO_DOCUMENTATION[word] || '';
+	// @ts-ignore
+	console.log(keywords[word]);
+	// buf = keywords[word];
 	buf = buf.replace(/`/g, ''); // Get rid of all code formatting which messes up hyperlinks
 	return buf;
 }

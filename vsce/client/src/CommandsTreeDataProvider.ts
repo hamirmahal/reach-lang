@@ -1,6 +1,7 @@
+import * as keywords from './keywordDocumentation';
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { TreeItem } from 'vscode';
-import * as path from 'path';
 
 const reach_icon = path.join(__filename, '..', '..', '..', 'images', 'reach-icon.svg');
 const reach_icon_red = path.join(__filename, '..', '..', '..', 'images', 'reach-icon-red.svg');
@@ -77,7 +78,7 @@ COMMANDS.forEach(commandObject => {
 				icon = github_icon
 				break;
 		};
-		
+
 		HELP_TREE_DATA.push(
 			makeLabeledTreeItem(
 				label, title, command, icon
@@ -130,19 +131,73 @@ export class HelpTreeDataProvider implements vscode.TreeDataProvider<TreeItem> {
 	}
 }
 
+// https://github.com/reach-sh/reach-ide/tree/docs
+// Thank you, Chris Nevers.
+const MAKE_DOCUMENTATION_TREE_ITEM = (
+	id: string,
+	userFacingTitle: string | vscode.TreeItemLabel
+) => {
+	const treeItem = new TreeItem(
+		userFacingTitle,
+		vscode.TreeItemCollapsibleState.Collapsed
+	);
+	treeItem.id = id;
+	return treeItem;
+};
+
 export class DocumentationTreeDataProvider implements vscode.TreeDataProvider<TreeItem> {
 
 	data: vscode.TreeItem[];
 
 	constructor() {
-		this.data = DOCUMENTATION_TREE_DATA;
+		this.data = [
+			...DOCUMENTATION_TREE_DATA,
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'appinit', 'App Init'
+			),
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'module', 'Module'
+			),
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'step', 'Step'
+			),
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'consensus', 'Consensus Step'
+			),
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'local', 'Local Step'
+			),
+			MAKE_DOCUMENTATION_TREE_ITEM(
+				'compute', 'Computations'
+			),
+		];
 	}
 
 	getTreeItem(element: TreeItem) {
 		return element;
 	}
 
-	getChildren(_?: TreeItem|undefined) {
-		return this.data;
+	getChildren(item: TreeItem | undefined) {
+		if (item === undefined) {
+			return this.data;
+		}
+
+		const itemId = item.id;
+		const object = keywords[itemId];
+
+		return Object.keys(object).sort().map(key => {
+			const tooltipTextOnHover = object[key];
+
+			const treeItem = makeTreeItem(key, `reach.docs.${
+				itemId
+			}.${key}`);
+
+			const command = `vscode.open`;
+			const title = `Open ${itemId}`;
+			treeItem.command = { command, title };
+			treeItem.tooltip = tooltipTextOnHover;
+			console.log('treeItem', treeItem);
+			return treeItem;
+		});
 	}
 }
