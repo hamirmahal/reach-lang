@@ -14,7 +14,7 @@ import Reach.AST.Base (ErrorSuggestions (..), ErrorMessageForJson, HasErrorCode 
 import Reach.UnsafeUtil (unsafeIsErrorFormatJson, unsafeTermSupportsColor)
 import qualified System.Console.Pretty as TC
 import System.IO (hPutStrLn)
-import System.IO.Extra (stderr)
+import System.IO.Extra (stderr, stdout)
 
 capitalized :: String -> String
 capitalized [] = []
@@ -99,7 +99,7 @@ emitWarning :: Maybe SrcLoc -> Warning -> IO ()
 emitWarning at d =
   case unsafeIsErrorFormatJson of
     True ->
-      hPutStrLn stderr $ "warning: " ++ makeErrorJson (fromMaybe mempty at) d
+      hPutStrLn stdout $ makeErrorJson (fromMaybe mempty at) d
     False -> do
       let msg =
             case at of

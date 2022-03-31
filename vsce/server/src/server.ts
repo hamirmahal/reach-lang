@@ -26,6 +26,8 @@ import {
   CodeActionKind,
   CodeActionParams,
   CodeActionContext,
+  DiagnosticRelatedInformation,
+  DiagnosticTag,
   WorkspaceEdit,
   HoverParams,
   Hover,
@@ -47,7 +49,7 @@ import { exec, ExecException } from "child_process";
 import { createConnection } from 'vscode-languageserver/node';
 
 import {
-  TextDocument, Range, TextEdit
+  Position, Range, TextDocument, TextEdit,
 } from 'vscode-languageserver-textdocument';
 import { KEYWORD_TO_COMPLETION_ITEM_KIND, REACH_KEYWORDS } from './keywordCompletion';
 
@@ -81,7 +83,7 @@ let hasConfigurationCapability: boolean = false;
 let hasWorkspaceFolderCapability: boolean = false;
 let hasDiagnosticRelatedInformationCapability: boolean = false;
 
-const DIAGNOSTIC_SOURCE: string = 'Reach';
+const source: string = 'Reach';
 
 const DID_YOU_MEAN_PREFIX = 'Did you mean: ';
 
@@ -237,6 +239,198 @@ documents.onDidClose(e => {
   documentSettings.delete(e.document.uri);
 });
 
+
+const CREATE_WARNING_DIAGNOSTIC = (
+  textDocument: TextDocument,
+  warningJSON: ReachCompilerErrorJSON
+): Diagnostic => {
+  let {
+    ce_errorCode: code,
+    ce_errorMessage: message,
+    ce_offendingToken,
+    ce_position,
+    ce_suggestions: suggestions,
+  } = warningJSON;
+
+  let [ line, character ] = ce_position;
+  line--;
+
+  const start: Position = { character, line };
+  const end: Position = { character, line };
+  const range: Range = { start, end };
+  let text = textDocument.getText(range);
+  console.info('original text', text);
+  console.info('original range', range);
+    console.info(''); // add newline for readability
+
+  if (ce_offendingToken) {
+    console.info(
+      'ce_offendingToken',
+      ce_offendingToken
+    );
+
+        // Reset characters so we can grab
+        // a whole line
+    start.character = 0;
+    end.character = 0;
+
+        // Skip ahead so we can grab a whole line.
+    end.line++;
+
+    text = textDocument.getText(
+      range
+    );
+
+    start.character = text.indexOf(
+      ce_offendingToken
+    );
+    end.character = start.character +
+      ce_offendingToken.length;
+    end.line--;
+
+    text = textDocument.getText(
+      range
+    );
+    console.info(
+      'updated text ' + text + '\n'
+    );
+    console.info('updated range', range);
+  }
+
+  const href =
+    `https://docs.reach.sh/rsh/errors/#${code}`;
+  const tags: DiagnosticTag[] = [];
+  if (code === 'RW0000') {
+    tags.push(DiagnosticTag.Deprecated);
+
+        const weNeedToUpdateTheLocation = message.includes(
+            'relativeTime'
+        );
+
+        if (weNeedToUpdateTheLocation) {
+            console.info('updating location...');
+            console.info('original start');
+      console.info(start);
+            console.info('original end');
+      console.info(end);
+
+            // Give enough room to
+      // get the desired variable.
+            end.character = 0;
+      end.line += 2;
+
+            console.info('updated start');
+      console.info(start);
+            console.info('updated end');
+      console.info(end);
+      console.info();
+            let textWithCommaAndPossibleLeadingWhitespace
+        = textDocument.getText(range);
+
+      // Get everything up to the comma.
+      const regularExpression: RegExp = /.+,/;
+      const stringMatchResult =
+        textWithCommaAndPossibleLeadingWhitespace.match(
+          regularExpression
+        );
+
+      if (stringMatchResult === null) {
+        console.error(
+          textWithCommaAndPossibleLeadingWhitespace
+        );
+        console.error('\n did not match the format');
+        console.error(' expected.');
+        return {
+          code,
+          codeDescription: { href },
+          message,
+          range,
+          severity: DiagnosticSeverity.Warning,
+          source,
+          tags
+        };
+      }
+
+      textWithCommaAndPossibleLeadingWhitespace
+        = stringMatchResult[0];
+
+      const { length } =
+        textWithCommaAndPossibleLeadingWhitespace;
+
+      const textWithPossibleLeadingWhitespace =
+        textWithCommaAndPossibleLeadingWhitespace
+          .substring(0, length - 1);
+
+      const textToUnderline =
+        textWithPossibleLeadingWhitespace.trimLeft();
+
+      console.info('The following text should');
+      console.info('have a warning underline.');
+      console.info(textToUnderline + '\n');
+
+      start.character = 0;
+      end.line = start.line + 1;
+      end.character = 0;
+      let text = textDocument.getText(range);
+      console.info('text!');
+      console.info(text + '\n');
+      let startCharacter = text.indexOf(
+        textToUnderline
+      );
+
+      if (startCharacter === -1) {
+        end.line++;
+        start.line++;
+        text = textDocument.getText(range);
+        console.info('updated text!');
+        console.info(text + '\n');
+        startCharacter = text.indexOf(
+          textToUnderline
+        );
+      }
+
+      start.character = startCharacter;
+      end.character =
+        startCharacter + textToUnderline.length;
+
+      // The text to underline should
+      // only ever be one one line, so
+      // make the start and end positions'
+      // lines equivalent.
+      end.line--;
+        }
+  }
+  const diagnostic: Diagnostic = {
+    code,
+    codeDescription: { href },
+    message,
+    range,
+    severity: DiagnosticSeverity.Warning,
+    source,
+    tags
+  };
+
+  const { uri } = textDocument;
+  const location = { range, uri };
+
+  if (suggestions.length) {
+    message = DID_YOU_MEAN_PREFIX + suggestions;
+  }
+
+  const relatedInfo: DiagnosticRelatedInformation = {
+    location,
+    message
+  };
+
+  if (hasDiagnosticRelatedInformationCapability) {
+    diagnostic.relatedInformation = [
+      relatedInfo
+    ];
+  }
+
+  return diagnostic;
+};
+
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(change => {
@@ -267,7 +461,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       connection.console.info(
         'Reach shell script exists at'
       );
-      connection.console.info(reachPath);
+      connection.console.info(reachPath + '\n');
     } else {
       connection.console.log('');
       connection.console.error(
@@ -289,9 +483,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       exec(
         'curl https://raw.githubusercontent.com/' +
         'reach-sh/reach-lang/master/reach -o ' +
-        reachPath +
-        ' ; chmod +x ' +
-        reachPath, (
+        reachPath + ' ; chmod +x ' + reachPath, (
           error: ExecException | null,
           stdout: string,
           stderr: string
@@ -398,7 +590,7 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
   theCompilerIsCompiling = true;
 
   connection.console.info('Starting compilation using');
-  connection.console.info(reachPath);
+  connection.console.info(reachPath + '\n');
   exec(
     "cd " + tempFolder + " && " + reachPath +
     " compile " + REACH_TEMP_FILE_NAME +
@@ -413,9 +605,8 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
       // passing the stdout and stderr to a callback
       // function when complete". See
       // https://nodejs.org/api/child_process.html
-      console.debug(
-        "Compilation should now have finished.",
-        new Date().toLocaleTimeString()
+      connection.console.info(
+          'Compilation should now have finished.\n'
       );
       theCompilerIsCompiling = false;
       if (weNeedToCompileAgain) {
@@ -423,6 +614,10 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
         validateTextDocument(textDocument);
         return;
       }
+
+      console.info('error', error + '\n');
+      console.info('stdout', stdout + '\n');
+      console.info('stderr', stderr + '\n');
 
       if (error) {
         connection.console.log(
@@ -448,16 +643,41 @@ async function validateTextDocument(textDocument: TextDocument): Promise<void> {
               DiagnosticSeverity.Error,
               err.code,
               err.suggestions,
-              DIAGNOSTIC_SOURCE
+              source
             );
           }
         });
-
-        return;
       }
-      connection.console.log(`Reach compiler output: ${
-        stdout
-      }`);
+
+      if (stdout) {
+        console.info('stdout', stdout);
+        const array: string[] = stdout.split('\n');
+        array.pop();
+        console.info('array', array);
+        console.info('');
+
+        array.forEach(element => {
+          const thereIsntAJSON = element.charAt(0) !== '{';
+          if (thereIsntAJSON) {
+              return;
+          }
+
+          const warningJSON: ReachCompilerErrorJSON
+            = JSON.parse(element);
+          console.info('warningJSON', warningJSON);
+          console.info(''); // add blank line for readability
+
+          const diagnostic = CREATE_WARNING_DIAGNOSTIC(
+            textDocument,
+            warningJSON
+          );
+
+          diagnostics.push(diagnostic);
+        });
+      }
+
+      const { uri } = textDocument;
+      connection.sendDiagnostics({diagnostics, uri});
     }
   );
 
@@ -601,11 +821,21 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
 
   // Get quick fixes for each diagnostic
   diagnostics.forEach(diagnostic => {
-    const { range, relatedInformation } = diagnostic;
-    const message = (relatedInformation || [])[0]?.message || "";
+        const { code } = diagnostic;
+    let {
+            message, range, relatedInformation,
+        } = diagnostic;
+        let { start } = range;
+        console.info('range', range);
+        console.info(''); // Add blank line for readability
+
+    const text = textDocument.getText(range);
+    console.info('text in this range', text + '\n');
+    const m2 = (relatedInformation || [])[0]?.message || "";
+
     // Diagnostics are either suggestions or generic 'Reach compilation error encountered' messages
-    if (message.startsWith(DID_YOU_MEAN_PREFIX)) {
-      const suggestions = message.substring(DID_YOU_MEAN_PREFIX.length).split(',');
+    if (m2.startsWith(DID_YOU_MEAN_PREFIX)) {
+      const suggestions = m2.substring(DID_YOU_MEAN_PREFIX.length).split(',');
       suggestions.forEach(suggestion => {
         codeActions.push(getQuickFix(diagnostic, labelPrefix + suggestion, range, suggestion, textDocument));
       });
@@ -648,9 +878,140 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
         };
         codeActions.push(codeAction);
       }
-    } else if (diagnostic.code === "RE0048") {
-      const title = "Add Reach program header.";
+    } else if (code === 'RE0031' && message.includes(
+            'You must `commit` first.'
+        )) {
+            // Grab the whole line.
+            let { line } = start;
+            start.character = 0;
+            let currLine = textDocument.getText(range);
 
+            // Get the line containing the end of Reach.App
+            const stack = [];
+            for (const c of currLine) {
+                if (c === '(' || c === '{') {
+                    stack.push(c);
+                } else if (c === ')' || c === '}') {
+                    stack.pop();
+                }
+            }
+
+            // Just processed the first line, so start
+            // at next one
+            line++;
+            let character = 0;
+            start = { character, line };
+            let end = { character, line: line + 1 };
+            range = { start, end };
+            currLine = textDocument.getText(range);
+            console.info('current line');
+            console.info(currLine);
+            const s = currLine.trimLeft();
+            const index = currLine.indexOf(s);
+            const usersPreferredIndentation: string
+                = currLine.slice(0, index);
+            console.info(
+                'usersPreferredIndentation is',
+                usersPreferredIndentation
+            );
+
+            const fullSourceFile
+                = textDocument.getText().split('\n');
+            const { lineCount } = textDocument;
+            while (line < lineCount && stack.length) {
+                currLine = fullSourceFile[line];
+                for (const c of currLine) {
+                    if (c === '(' || c === '{') {
+                        stack.push(c);
+                    } else if (c === ')' || c === '}') {
+                        stack.pop();
+                    }
+                }
+                line++;
+            }
+            // Go to the last line of Reach.App
+            line -= 2;
+
+            if (stack.length === 0) {
+                let newText: string = '\n' +
+                    usersPreferredIndentation +
+                    'commit();';
+
+                console.info('Found the end of Reach.App');
+                console.info(
+                    'fullSourceFile[line]',
+                    fullSourceFile[line]
+                );
+                console.info('line', line);
+                console.info('lineCount', lineCount);
+
+                character = fullSourceFile[
+                    line
+                ].length;
+                start = { character, line };
+                end = start;
+                range = { start, end };
+                console.info('range', range);
+
+                const textEdit: TextEdit = {
+                    newText,
+                    range
+                };
+                const changes = {
+                    [ textDocument.uri ]: [ textEdit ]
+                };
+                const edit: WorkspaceEdit = { changes };
+                const title
+                    = "Add 'commit();' before exiting.";
+                const codeAction: CodeAction = {
+                    diagnostics: [ diagnostic ],
+                    edit,
+                    kind: CodeActionKind.QuickFix,
+                    title
+                };
+                codeActions.push(codeAction);
+            }
+    } else if (code === "RE0031" && message.includes(
+            'You must create a `Reach.App` first.'
+        )) {
+            console.info('start before', start);
+            const character = 0;
+            let { line } = start;
+            start.character = character;
+            console.info('start after', start);
+
+            line++;
+            let end = { character, line, };
+            range = { start, end };
+
+            // Move line back before the string to wrap.
+            line--;
+            start = { character, line };
+            let newText = 'export const main = ' +
+                'Reach.App(() => {\n    ';
+            end = start;
+            range = { start, end };
+      const textEdit1: TextEdit = { newText, range, };
+
+            line++;
+            start = { character, line, };
+            end = start;
+            newText = '});\n';
+            range = { start, end };
+      const textEdit2: TextEdit = { newText, range, };
+      const changes = {
+        [ textDocument.uri ]: [ textEdit1, textEdit2 ]
+      };
+      const edit: WorkspaceEdit = { changes };
+      const title = "Wrap in 'Reach.App'.";
+      const codeAction: CodeAction = {
+        diagnostics: [ diagnostic ],
+        edit,
+        kind: CodeActionKind.QuickFix,
+        title
+      };
+      codeActions.push(codeAction);
+    } else if (code === 'RE0048') {
       // Extract the error message from Reach's
       // compiler, from the diagnostic variable.
       const { message } = diagnostic;
@@ -675,19 +1036,15 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
       // Add newlines to improve readability.
       newText += "\n\n";
 
-      const textEdit: TextEdit = {
-        newText,
-        range
-      };
+      const textEdit: TextEdit = { newText, range, };
       const changes = {
         [ textDocument.uri ]: [ textEdit ]
       };
-      const edit: WorkspaceEdit = {
-        changes
-      };
+      const edit: WorkspaceEdit = { changes };
+      const title = 'Add Reach program header.';
       const codeAction: CodeAction = {
-        edit,
         diagnostics: [ diagnostic ],
+        edit,
         kind: CodeActionKind.QuickFix,
         title
       };
