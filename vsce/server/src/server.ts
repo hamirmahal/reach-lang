@@ -601,15 +601,20 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
 
   // Get quick fixes for each diagnostic
   diagnostics.forEach(diagnostic => {
-    const { range, relatedInformation } = diagnostic;
+    const { code, range, relatedInformation } = diagnostic;
     const message = (relatedInformation || [])[0]?.message || "";
+    const { start, end } = range;
+
+    console.info('range', range);
+    console.info('');
+
     // Diagnostics are either suggestions or generic 'Reach compilation error encountered' messages
     if (message.startsWith(DID_YOU_MEAN_PREFIX)) {
       const suggestions = message.substring(DID_YOU_MEAN_PREFIX.length).split(',');
       suggestions.forEach(suggestion => {
         codeActions.push(getQuickFix(diagnostic, labelPrefix + suggestion, range, suggestion, textDocument));
       });
-    } else if (diagnostic.code === 'RE0002') {
+    } else if (code === 'RE0002') {
       // Grab the general starting area of
       // the diagnostic.
       const { start } = range;
@@ -648,7 +653,7 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
         };
         codeActions.push(codeAction);
       }
-    } else if (diagnostic.code === "RE0048") {
+    } else if (code === "RE0048") {
       const title = "Add Reach program header.";
 
       // Extract the error message from Reach's
@@ -692,6 +697,37 @@ async function getCodeActions(diagnostics: Diagnostic[], textDocument: TextDocum
         title
       };
       codeActions.push(codeAction);
+    } else if (code === 'RE0055') {
+      const text = textDocument.getText(range);
+      const index = text.indexOf('Bytes');
+      const firstIndexAfterBytes = index + 'Bytes'.length;
+      const firstCharAfterBytes = text.charAt(
+        firstIndexAfterBytes
+      );
+      console.info('text', text);
+      console.info('char', firstCharAfterBytes + '\n');
+
+      // This Quick Fix is for a very specific issue
+      // where developers use "Bytes" without any
+      // parameters, when they should, like "Bytes(8)".
+      if (index !== -1 && firstCharAfterBytes !== '(') {
+        const newText: string = '(maxLength)';
+        start
+
+        const textEdit: TextEdit = { newText, range };
+        const changes = {
+          [ textDocument.uri ]: [ textEdit ]
+        };
+        const edit: WorkspaceEdit = { changes };
+        const title = "Pass parameter to 'Bytes'.";
+        const codeAction: CodeAction = {
+          diagnostics: [ diagnostic ],
+          edit,
+          kind: CodeActionKind.QuickFix,
+          title
+        };
+        codeActions.push(codeAction);
+      }
     }
   });
 
