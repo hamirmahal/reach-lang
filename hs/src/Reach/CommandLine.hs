@@ -6,7 +6,9 @@ module Reach.CommandLine
   , getCompilerArgs
   , getCompilerEnv
   , truthyEnv
-  )
+  , SupportToolArgs(..)
+  , SupportOpts(..)
+  , supportFromCommandLineHs)
 where
 
 import Data.Char
@@ -33,6 +35,34 @@ data CompilerOpts = CompilerOpts
   , co_sim :: Bool
   , co_verifyFirstFailQuit :: Bool
   }
+
+newtype SupportToolArgs = SupportToolArgs {sta_so :: SupportOpts}
+
+data SupportOpts = SupportOpts
+  { so_fileToUpload1 :: FilePath
+  , so_fileToUpload2 :: FilePath
+  , so_fileToUpload3 :: FilePath
+  , so_fileToUpload4 :: FilePath
+  , so_fileToUpload5 :: FilePath
+  , so_fileToUpload6 :: FilePath
+  , so_fileToUpload7 :: FilePath
+  , so_fileToUpload8 :: FilePath
+  , so_fileToUpload9 :: FilePath
+  }
+
+supportFromCommandLineHs :: Parser SupportToolArgs
+supportFromCommandLineHs =
+  SupportToolArgs
+    <$> (SupportOpts
+           <$> strArgument (metavar "path/to/file1" <> value "")
+           <*> strArgument (metavar "path/to/file2" <> value "")
+           <*> strArgument (metavar "path/to/file3" <> value "")
+           <*> strArgument (metavar "path/to/file4" <> value "")
+           <*> strArgument (metavar "path/to/file5" <> value "")
+           <*> strArgument (metavar "path/to/file6" <> value "")
+           <*> strArgument (metavar "path/to/file7" <> value "")
+           <*> strArgument (metavar "path/to/file8" <> value "")
+           <*> strArgument (metavar "path/to/file9" <> value ""))
 
 compiler :: Parser CompilerToolArgs
 compiler =

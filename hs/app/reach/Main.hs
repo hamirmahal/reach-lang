@@ -2463,9 +2463,27 @@ instance FromJSON GitHubGistResponse where
   parseJSON = withObject "GitHubGistResponse" $ \o -> GitHubGistResponse <$> o .: "html_url"
 
 support :: Subcommand
-support = command "support" $ info (pure g) d
+support = command "support" $ info h d
   where
-    d = progDesc "Create GitHub gist of index.rsh and index.mjs"
+    d = progDesc "Create GitHub gist of index.rsh and index.mjs (default), or upload up to 9 files!"
+    h = go <$> supportFromCommandLineHs
+    go SupportToolArgs {sta_so = SupportOpts {}} = do
+      rawArgs <- liftIO getArgs
+      let rawArgs' = dropWhile (/= "support") rawArgs
+      let actualArgs = tail rawArgs'
+      case actualArgs of
+        [] -> g -- no arguments? default behavior!
+        _ -> validate actualArgs
+    validate :: [FilePath] -> App
+    validate actualArguments = liftIO $ do
+      arrayOfPairs <- liftIO $ mapM z actualArguments
+      let indices = [] `L.elemIndices` arrayOfPairs
+      case indices of
+        [] -> upload arrayOfPairs
+        _ -> do
+          putStrLn "Couldn't find"
+          mapM_ (\i -> print $ actualArguments !! i) indices
+          putStrLn "Nothing uploaded"
     f i c = i .= object
       [ "content" .= if T.null (T.strip $ pack c) then "// (Empty source file)" else c
       , "language" .= ("JavaScript" :: String)
@@ -2473,7 +2491,8 @@ support = command "support" $ info (pure g) d
       ]
     z i = doesFileExist i >>= \case
       False -> pure []
-      True -> (\a -> [f (pack i) a]) <$> readFile i
+      -- "Contents files can't be in subdirectories or include '/' in the name"
+      True -> (\a -> [f (T.replace "/" "\\" $ pack i) a]) <$> readFile i
     clientId = "c4bfe74cc8be5bbaf00e" :: String
     is l = maybe False (== pack l) . headMay
     by a x = maybe (putStrLn ("Missing field `" <> x <> "`.") >> exitWith (ExitFailure 1)) pure
@@ -2488,6 +2507,10 @@ support = command "support" $ info (pure g) d
       when (null rsh && null mjs) $ do
         putStrLn "Neither index.rsh nor index.mjs exist in the current directory; aborting."
         exitWith ExitSuccess
+      when (null rsh) $ putStrLn "\nDidn't find index.rsh in the current directory; skipping..."
+      when (null mjs) $ putStrLn "\nDidn't find index.mjs in the current directory; skipping..."
+      upload [ rsh, mjs ]
+    upload arrayOfPairs = liftIO $ do
       a <- req "https://github.com/login/device/code"
         [ "client_id" .= clientId
         , "scope" .= ("gist" :: String)
@@ -2515,15 +2538,14 @@ support = command "support" $ info (pure g) d
           Just _ -> t `by` "error" >>= T.putStrLn . (pack "\nError while acquiring access token:\n" <>)
         exitWith $ ExitFailure 1
       gat <- unpack <$> t `by` "access_token"
-      when (null rsh) $ putStrLn "\nDidn't find index.rsh in the current directory; skipping..."
-      when (null mjs) $ putStrLn "\nDidn't find index.mjs in the current directory; skipping..."
+      let flattenedPairs = foldl (<>) [] arrayOfPairs
       -- @TODO: Also add output of reach hashes!
       parseRequest "POST https://api.github.com/gists"
         >>= httpBS
           . setRequestHeader "User-Agent" [ BSI.packChars "reach" ]
           . setRequestHeader "Authorization" [ BSI.packChars ("token " <> gat) ]
           . setRequestHeader "Accept" [ BSI.packChars "application/vnd.github.v3+json" ]
-          . setRequestBodyJSON (object [ "files" .= object (rsh <> mjs) ])
+          . setRequestBodyJSON (object [ "files" .= object flattenedPairs ])
         >>= Y.decodeThrow . getResponseBody
         >>= \(GitHubGistResponse r) -> T.putStrLn $ "\n" <> [N.text|
               Your gist is viewable at:
