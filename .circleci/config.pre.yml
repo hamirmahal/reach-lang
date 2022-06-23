@@ -155,6 +155,10 @@ jobs:
         if [ -f .did_change ]; then
           git diff --exit-code HEAD~ changelog/index.md
         fi
+    - name: Deploy preview
+      uses: rossjrw/pr-preview-action@v1
+      with:
+          source-dir: ./docs/build/
     - slack/notify:
         event: fail
         channel: 'CMY2TF38D' # general
