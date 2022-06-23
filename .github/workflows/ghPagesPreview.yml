@@ -20,38 +20,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      # 'every step must define a `uses` or `run` key'
-      # - workattach
-      # - srd_no
-      - run: |
-          cp /tmp/workspace/search/* ./docs/search/
-          (cd docs && make update-search)
-      # - add_ssh_keys:
-      #     fingerprints:
-      #     - "83:23:9c:21:6a:74:61:48:20:da:a3:45:79:89:3e:86"
-      - run: |
-          git config user.email "devbot@reach.sh"
-          git config user.name "reachdevbot"
-          git fetch origin gh-pages
-          git checkout gh-pages
-          git pull origin gh-pages
-          git rm -r .
-          cp -r /tmp/workspace/docs/* .
-          [ -f index.html ] || exit 1
-          touch .nojekyll
-          git add .
-          # https://stackoverflow.com/questions/8123674/how-to-git-commit-nothing-without-an-error
-          git diff-index --quiet HEAD || (git commit -m "[ci skip] docs for ${CIRCLE_SHA1}" && touch .did_change)
-          git push origin gh-pages
-      - run: |
-          if [ -f .did_change ]; then
-            git diff --exit-code HEAD~ changelog/index.md
-          fi
-
       - name: Install and Build
         run: |
-          npm install
-          npm run build
+          echo "hello?"
 
       - name: Deploy preview
         uses: rossjrw/pr-preview-action@v1
