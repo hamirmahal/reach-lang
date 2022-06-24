@@ -3,16 +3,6 @@
 This document contains explanations and solutions for a variety of common
 problems we've observed users facing.
 
-## {#ts-perm} Permissions
-
-If you receive one of the following errors:
-
-```cmd
-reach: /app/tmp/out.sh: openFile: permission denied (Permission denied)
-```
-
-or
-
 ```
 chmod: cannot access '/tmp/reach.../out.sh': No such file or directory
 ./reach: 1: /tmp/reach.../out.sh: not found
