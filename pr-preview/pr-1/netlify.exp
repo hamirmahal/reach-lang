@@ -13,3 +13,4 @@ expect "Choose a unique site name "
 send -- "[lindex $argv 1]\n"
 
 expect eof
+puts $expect_out(buffer)
