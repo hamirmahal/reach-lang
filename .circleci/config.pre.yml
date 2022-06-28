@@ -121,6 +121,10 @@ jobs:
     - workattach
     - srd_no
     - run: |
+        (cd docs && make build)
+        # mkdir -p /tmp/workspace/search
+        # cp -fr docs/build /tmp/workspace/docs
+        # cp -f docs/search/index.json /tmp/workspace/search
         # cp /tmp/workspace/search/* ./docs/search/
         # (cd docs && make update-search)
         git fetch origin gh-pages
