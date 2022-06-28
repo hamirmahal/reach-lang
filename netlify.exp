@@ -1,7 +1,7 @@
 #!/usr/bin/expect -f
 
 set timeout -1
-spawn netlify deploy --auth $argv
+spawn netlify deploy --auth [lindex $argv 0]
 
 expect "What would you like to do?"
 send -- "j\n"
