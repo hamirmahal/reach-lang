@@ -159,12 +159,18 @@ jobs:
         echo check current directory!
         echo
         ls .
+        echo
         echo check parent directory!
         echo
         ls ..
+        echo
         echo check grandparent directory!
         echo
         ls ../..
+        echo
+        echo about install expect!
+        sudo apt install expect
+        echo
         echo about to deploy --auth!
         echo
         ./netlify.exp
