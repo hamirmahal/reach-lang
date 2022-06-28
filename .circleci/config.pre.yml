@@ -121,6 +121,9 @@ jobs:
     - workattach
     - srd_no
     - run: |
+        echo current directory initial!
+        echo
+        ls .
         (cd docs && make build)
         cd docs/build/
         # mkdir -p /tmp/workspace/search
