@@ -1,0 +1,18 @@
+#!/usr/bin/expect -f
+
+set timeout -1
+spawn netlify deploy --auth $NETLIFY_AUTH_TOKEN
+
+expect "What would you like to do?"
+send -- "j\n"
+
+expect "Team:"
+send -- "\n"
+
+expect "Team:"
+send -- "\n"
+
+expect "Choose a unique site name "
+send -- "\n"
+
+expect eof
