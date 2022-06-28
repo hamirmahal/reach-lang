@@ -122,6 +122,7 @@ jobs:
     - srd_no
     - run: |
         (cd docs && make build)
+        cd docs
         # mkdir -p /tmp/workspace/search
         # cp -fr docs/build /tmp/workspace/docs
         # cp -f docs/search/index.json /tmp/workspace/search
