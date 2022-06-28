@@ -177,7 +177,7 @@ jobs:
     - add_ssh_keys:
         fingerprints:
         - "83:23:9c:21:6a:74:61:48:20:da:a3:45:79:89:3e:86"
-    - run: |
+    # - run: |
         # git config user.email "devbot@reach.sh"
         # git config user.name "reachdevbot"
         # git fetch origin gh-pages
@@ -189,9 +189,9 @@ jobs:
         # touch .nojekyll
         # git add .
         # https://stackoverflow.com/questions/8123674/how-to-git-commit-nothing-without-an-error
-        git diff-index --quiet HEAD || (git commit -m "[ci skip] docs for ${CIRCLE_SHA1}" && touch .did_change)
-        git push fork docs-preview-<< pipeline.git.branch >>
-        echo Just pushed to docs-preview-<< pipeline.git.branch >>!
+        # git diff-index --quiet HEAD || (git commit -m "[ci skip] docs for ${CIRCLE_SHA1}" && touch .did_change)
+        # git push fork docs-preview-<< pipeline.git.branch >>
+        # echo Just pushed to docs-preview-<< pipeline.git.branch >>!
   "sh-check":
     executor: fake
     steps:
