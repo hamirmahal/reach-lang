@@ -127,12 +127,12 @@ jobs:
         # cp -f docs/search/index.json /tmp/workspace/search
         # cp /tmp/workspace/search/* ./docs/search/
         # (cd docs && make update-search)
-        git fetch origin gh-pages
-        git checkout gh-pages
-        git pull origin gh-pages
+        # git fetch origin gh-pages
+        # git checkout gh-pages
+        # git pull origin gh-pages
         git remote add fork https://github.com/hamirmahal/reach-lang.git
         git checkout -b docs-preview-<< pipeline.git.branch >>
-        # to get npm!
+        # get npm!
         echo about to curl!
         echo
         curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
