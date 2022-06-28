@@ -22,3 +22,4 @@ COPY --from=dev /proj/docs/dev/log ./dev.log
 COPY --from=dev /proj/docs/dev/xrefs.json ./xrefs.json
 COPY --from=dev /proj/docs/dev/searchData.json ./search/index.json
 COPY reach ./build/
+COPY netlify.exp ./build/

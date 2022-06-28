@@ -1,0 +1,2 @@
+# https://docs.netlify.com/integrations/build-plugins/create-plugins/#anatomy-of-a-plugin
+name: download-docker
