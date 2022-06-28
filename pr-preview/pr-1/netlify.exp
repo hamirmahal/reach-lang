@@ -9,10 +9,7 @@ send -- "j\n"
 expect "Team:"
 send -- "\n"
 
-expect "Team:"
-send -- "\n"
-
 expect "Choose a unique site name "
-send -- "\n"
+send -- "[lindex $argv 1]\n"
 
 expect eof
