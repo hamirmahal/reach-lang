@@ -1,6 +1,6 @@
 #!/usr/bin/expect -f
 
-set timeout -2
+set timeout -1
 spawn netlify deploy --auth $argv
 
 expect "What would you like to do?"
