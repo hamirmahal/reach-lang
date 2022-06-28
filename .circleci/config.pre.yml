@@ -126,6 +126,7 @@ jobs:
         ls .
         (cd docs && make build)
         cd docs/build/
+        cp base.html index.html
         # mkdir -p /tmp/workspace/search
         # cp -fr docs/build /tmp/workspace/docs
         # cp -f docs/search/index.json /tmp/workspace/search
