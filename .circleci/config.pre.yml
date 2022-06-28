@@ -2,7 +2,6 @@ version: 2.1
 orbs:
   jq: "circleci/jq@2.2.0"
   shellcheck: "circleci/shellcheck@2.2.0"
-  slack: "circleci/slack@4.3.3"
 
 executors:
   fake:
@@ -32,19 +31,6 @@ commands:
     steps:
       - attach_workspace:
           at: /tmp/workspace
-  slack_fail:
-    steps:
-      - slack/notify:
-          # NOTE: We used to do
-          # branch_pattern: "master,gh-pages"
-          # But, I am disabling it on purpose
-          event: fail
-          custom: |
-            { "blocks": [
-                { "type": "section",
-                  "text": {
-                    "type": "mrkdwn",
-                    "text": "*FAIL* ${CIRCLE_USERNAME}/<https://github.com/reach-sh/reach-lang/tree/${CIRCLE_BRANCH}|${CIRCLE_BRANCH}>${CIRCLE_PULL_REQUEST:+/<$CIRCLE_PULL_REQUEST|PR>} > ${CIRCLE_JOB} <${CIRCLE_BUILD_URL}|more...>" }}]}
   srd_yes:
     steps:
       - setup_remote_docker:
@@ -123,52 +109,91 @@ jobs:
         paths:
           - docs
           - search
-    - slack_fail
   "docs-deploy":
+    # This is the base environment that Circle will use
+    # docker:
+    #   - image: circleci/python:3.6-stretch
     executor: fake
     steps:
+    # Get our data and merge with upstream
+    - run: sudo apt-get update
     - checkout
     - workattach
     - srd_no
     - run: |
-        cp /tmp/workspace/search/* ./docs/search/
-        (cd docs && make update-search)
+        echo current directory initial!
+        echo
+        ls .
+        (cd docs && make build)
+        cd docs/build/
+        rm index.html
+        cp base.html index.html
+        # mkdir -p /tmp/workspace/search
+        # cp -fr docs/build /tmp/workspace/docs
+        # cp -f docs/search/index.json /tmp/workspace/search
+        # cp /tmp/workspace/search/* ./docs/search/
+        # (cd docs && make update-search)
+        # git fetch origin gh-pages
+        # git checkout gh-pages
+        # git pull origin gh-pages
+        git remote add fork https://github.com/hamirmahal/reach-lang.git
+        # git checkout -b docs-preview-<< pipeline.git.branch >>
+        # get npm!
+        echo about to curl!
+        echo
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+        echo about to NVM_DIR="$HOME/.nvm"!
+        echo
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        echo about to nvm install node!
+        echo
+        nvm install node
+        echo which npm 2!
+        echo
+        which npm
+        echo about to check npm version!
+        npm --version
+        npm install netlify-cli -g
+        echo pwd!
+        echo
+        pwd
+        echo check current directory!
+        echo
+        ls .
+        echo
+        echo check parent directory!
+        echo
+        ls ..
+        echo
+        echo check grandparent directory!
+        echo
+        ls ../..
+        echo
+        echo about install expect!
+        sudo apt install expect
+        echo
+        echo about to deploy --auth!
+        echo
+        ./netlify.exp $NETLIFY_AUTH_TOKEN $CIRCLE_BUILD_NUM-docs-preview
     - add_ssh_keys:
         fingerprints:
         - "83:23:9c:21:6a:74:61:48:20:da:a3:45:79:89:3e:86"
-    - run: |
-        git config user.email "devbot@reach.sh"
-        git config user.name "reachdevbot"
-        git fetch origin gh-pages
-        git checkout gh-pages
-        git pull origin gh-pages
-        git rm -r .
-        cp -r /tmp/workspace/docs/* .
-        [ -f index.html ] || exit 1
-        touch .nojekyll
-        git add .
+    # - run: |
+        # git config user.email "devbot@reach.sh"
+        # git config user.name "reachdevbot"
+        # git fetch origin gh-pages
+        # git checkout gh-pages
+        # git pull origin gh-pages
+        # git rm -r .
+        # cp -r /tmp/workspace/docs/* .
+        # [ -f index.html ] || exit 1
+        # touch .nojekyll
+        # git add .
         # https://stackoverflow.com/questions/8123674/how-to-git-commit-nothing-without-an-error
-        git diff-index --quiet HEAD || (git commit -m "[ci skip] docs for ${CIRCLE_SHA1}" && touch .did_change)
-        git push origin gh-pages
-    - slack_fail
-    - run: |
-        if [ -f .did_change ]; then
-          git diff --exit-code HEAD~ changelog/index.md
-        fi
-    - slack/notify:
-        event: fail
-        channel: 'CMY2TF38D' # general
-        # (CMY3E5B3J = reach-lang)
-        custom: |
-          {
-            "blocks": [{
-              "type": "section",
-              "text": {
-                "type": "mrkdwn",
-                "text": "<https://docs.reach.sh/changelog/|Changelog> has changed!"
-              }
-            }]
-          }
+        # git diff-index --quiet HEAD || (git commit -m "[ci skip] docs for ${CIRCLE_SHA1}" && touch .did_change)
+        # git push fork docs-preview-<< pipeline.git.branch >>
+        # echo Just pushed to docs-preview-<< pipeline.git.branch >>!
   "sh-check":
     executor: fake
     steps:
@@ -176,7 +201,6 @@ jobs:
     - shellcheck/install
     - run: |
         make sh-lint
-    - slack_fail
   "hs-test":
     executor: real
     steps:
@@ -203,7 +227,6 @@ jobs:
         paths:
           - hs-test.xml
           - hs-test-url
-    - slack_fail
   "build-image":
     parameters:
       image:
@@ -232,7 +255,6 @@ jobs:
         IMAGE="<<parameters.image>>"
         cd .circleci && ./image.sh "${IMAGE}"
         "${ROOT}/scripts/cache-image.sh" "${IMAGE}"
-    - slack_fail
   "examples":
     parameters:
       connector:
@@ -273,16 +295,6 @@ jobs:
         paths:
           - artifacts
           - record
-    # This should only notify if something goes fatally wrong.
-    # Regular test failures go through to the sink.
-    - slack/notify:
-        event: fail
-        custom: |
-          { "blocks": [
-              { "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*CATASTROPHIC* ${CIRCLE_USERNAME}/<https://github.com/reach-sh/reach-lang/tree/${CIRCLE_BRANCH}|${CIRCLE_BRANCH}>${CIRCLE_PULL_REQUEST:+/<$CIRCLE_PULL_REQUEST|PR>} > examples.<<parameters.connector>> <${CIRCLE_BUILD_URL}|more...>" }}]}
   "build-sink":
     executor: fake
     steps:
@@ -294,17 +306,6 @@ jobs:
         when: always
         command: |
           echo "${RECORD_MESSAGE}"
-    - slack/notify:
-        event: always
-        # NOTE: We used to do
-        # branch_pattern: "master,gh-pages"
-        # But, I am disabling it on purpose
-        custom: |
-          { "blocks": [
-              { "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "${RECORD_MESSAGE}" }}]}
   "browser-tests":
     executor: real
     parameters:
@@ -338,18 +339,14 @@ jobs:
         path: js/browser-tests/cypress/videos
     - store_artifacts:
         path: js/browser-tests/cypress/screenshots
-    - slack_fail
 
 workflows:
   docs:
     jobs:
-    - "docs-render"
-    - "docs-deploy":
-       filters:
-         branches:
-           only: master
-       requires:
-       - "docs-render"
+    # - "docs-render"
+    - "docs-deploy"
+      #  requires:
+      #  - "docs-render"
   build:
     jobs:
     - "sh-check"

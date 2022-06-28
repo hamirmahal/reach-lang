@@ -1080,13 +1080,11 @@ You can fix this issue by providing a static `{!rsh} UInt` to the function.
 
 ## {#RE0055} RE0055
 
-This error occurs when you provide a primitive operation with the incorrect
-number of arguments or arguments of the wrong type. Please review the documentation
-for the function you are attempting to use and provide it with the correct arguments.
+Can you see this change?!
 
 ## {#RE0056} RE0056
 
-This error indicates that you are attempting to create a variable, although another variable in the scope uses the same name. 
+And if I change this back?
 
 Example:
 
@@ -1096,7 +1094,7 @@ md5: 87f19538850309dc0a0093898a961b8d
 range: 3 - 8
 ```
 
-In Reach, identifier shadowing is not allowed. 
+In Reach, identifier shadowing is not allowed.
 You can fix this issue by renaming your variable or moving one of the variable declarations to another scope where it does not conflict with the other.
 
 Example:
@@ -1120,7 +1118,7 @@ md5: 1aa6de133c2a6fd17a95b79a614adee4
 range: 13 - 20
 ```
 
-The `{!rsh} return` statement on line 19 will never be executed. 
+The `{!rsh} return` statement on line 19 will never be executed.
 The `{!rsh} return` statement in the `{!rsh} if ... else ...` block already handled what is needed for the `g` `{!rsh} function`.
 
 To fix the code remove line 19:
@@ -2172,7 +2170,7 @@ can either abstract the arguments into a new `{!rsh} Data` type or make separate
 
 @{errver(false, "v0.1")}
 
-This error indicates that there are multiple `{!rsh} API`s, `{!rsh} Participant`s or `{!rsh} ParticipantClass`es with the same name. 
+This error indicates that there are multiple `{!rsh} API`s, `{!rsh} Participant`s or `{!rsh} ParticipantClass`es with the same name.
 
 Example:
 
@@ -2497,7 +2495,7 @@ md5: f64aaa770eb9d6fe07c5074fda861b90
 range: 8 - 17
 ```
 
-This snippet `{!rsh} call`s the `{!rsh} API` instead of publishing. 
+This snippet `{!rsh} call`s the `{!rsh} API` instead of publishing.
 
 ## {#RE0126} RE0126
 
@@ -3233,7 +3231,7 @@ lastConsensusSecs() // references network seconds
 
 ### Correct code:
 
-``` reach 
+``` reach
 load: /hs/t/y/Fix_LoopVariableLength.rsh
 md5: a7450399a78f1da3e595dbdbdf7035e9
 range: 24 - 24
