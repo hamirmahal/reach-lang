@@ -343,7 +343,7 @@ const clickFollowLink = async (evt) => {
   if (t === null) { return; }
   if ( t.classList && t.classList.contains("copyBtn") ) {
     evt.preventDefault();
-    console.log('no ajax?');
+    console.log('added ajax');
     console.log('window.isSecureContext', window.isSecureContext);
     console.log('navigator', navigator);
     await navigator.clipboard.writeText(t.getAttribute('data-clipboard-text'));
