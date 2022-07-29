@@ -343,7 +343,18 @@ const clickFollowLink = async (evt) => {
   if (t === null) { return; }
   if ( t.classList && t.classList.contains("copyBtn") ) {
     evt.preventDefault();
+    console.log('no ajax?');
+    console.log('window.isSecureContext', window.isSecureContext);
+    console.log('navigator', navigator);
     await navigator.clipboard.writeText(t.getAttribute('data-clipboard-text'));
+    const id = t.getAttribute('id');
+    $(`#${id}`).attr('title', "Copied!").tooltip('show');
+    const milliseconds = 1000;
+    setTimeout(() => {
+      $(`#${id}`).tooltip('dispose');
+      t.setAttribute('title', 'Copy to clipboard');
+      console.log('set title to Copy to clipboard after disposing...');
+    }, milliseconds);
     return;
   }
   const href = t.href;
